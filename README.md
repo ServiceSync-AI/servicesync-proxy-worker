@@ -56,7 +56,8 @@ servicesync-proxy-worker/
 
 ### 1. Repository Setup
 This repository is already created and configured:
-- **GitHub Repo**: https://github.com/fhorn97/servicesync-proxy-worker
+- **GitHub Repo**: https://github.com/ServiceSync-AI/servicesync-proxy-worker
+- **Organization**: ServiceSync AI
 - **Local Path**: `/Users/frazierhorn/servicesync-proxy-worker`
 
 ### 2. Cloudflare Deployment
@@ -282,7 +283,7 @@ curl -s https://servicesync.io | grep -E "(og:url|twitter:url)"
 ### Resources
 - [Cloudflare Workers Documentation](https://developers.cloudflare.com/workers/)
 - [Webflow Help Center](https://webflow.com/help)
-- [GitHub Repository](https://github.com/fhorn97/servicesync-proxy-worker)
+- [GitHub Repository](https://github.com/ServiceSync-AI/servicesync-proxy-worker)
 
 ### Making Changes
 1. Edit code locally in `/Users/frazierhorn/servicesync-proxy-worker`
