@@ -7,10 +7,22 @@ export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
     
-    // Configuration
-    const TARGET_DOMAIN = 'www.hornhausventures.com'; // Updated to use www
-    const TARGET_PATH_PREFIX = '/servicesync';
-    const PROXY_DOMAIN = url.hostname; // servicesync.io or frazierhorn.com
+    // Multi-domain configuration
+    const PROXY_DOMAIN = url.hostname;
+    let TARGET_DOMAIN, TARGET_PATH_PREFIX;
+    
+    // Configure based on the incoming domain
+    if (PROXY_DOMAIN === 'servicesync.io' || PROXY_DOMAIN === 'www.servicesync.io') {
+      TARGET_DOMAIN = 'www.hornhausventures.com';
+      TARGET_PATH_PREFIX = '/servicesync';
+    } else if (PROXY_DOMAIN === 'frazierhorn.com' || PROXY_DOMAIN === 'www.frazierhorn.com') {
+      TARGET_DOMAIN = 'www.hornhausventures.com';
+      TARGET_PATH_PREFIX = '/frazier-horn';
+    } else {
+      // Default fallback
+      TARGET_DOMAIN = 'www.hornhausventures.com';
+      TARGET_PATH_PREFIX = '/servicesync';
+    }
     
     try {
       // Build the target URL for Webflow

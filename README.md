@@ -1,10 +1,15 @@
-# ServiceSync Proxy Worker
+# Multi-Domain Proxy Worker
 
-A Cloudflare Worker that proxies requests from `servicesync.io` (and later `frazierhorn.com`) to the ServiceSync page on your Webflow site at `hornhausventures.com/servicesync`, while maintaining `servicesync.io` in the browser for perfect SEO.
+A Cloudflare Worker that proxies requests from multiple domains to corresponding pages on your Webflow site at `hornhausventures.com`, while maintaining the custom domains in the browser for perfect SEO.
+
+## Supported Domains
+
+- **ServiceSync**: `servicesync.io` → `hornhausventures.com/servicesync`
+- **Frazier Horn**: `frazierhorn.com` → `hornhausventures.com/frazier-horn`
 
 ## Overview
 
-This proxy allows you to serve content from your existing Webflow site under a custom domain while maintaining SEO integrity. Visitors see `servicesync.io` in their browser, but the content comes from your `hornhausventures.com/servicesync` Webflow page.
+This proxy allows you to serve content from your existing Webflow site under custom domains while maintaining SEO integrity. Visitors see the custom domain in their browser, but the content comes from your Webflow pages.
 
 ## Features
 
@@ -18,9 +23,15 @@ This proxy allows you to serve content from your existing Webflow site under a c
 ## How It Works
 
 ### URL Mapping
+**ServiceSync:**
 - `servicesync.io/` → `hornhausventures.com/servicesync`
 - `servicesync.io/about` → `hornhausventures.com/servicesync/about`
 - `servicesync.io/contact` → `hornhausventures.com/servicesync/contact`
+
+**Frazier Horn:**
+- `frazierhorn.com/` → `hornhausventures.com/frazier-horn`
+- `frazierhorn.com/about` → `hornhausventures.com/frazier-horn/about`
+- `frazierhorn.com/portfolio` → `hornhausventures.com/frazier-horn/portfolio`
 
 ### Browser Experience
 1. User visits `servicesync.io`

@@ -3,20 +3,21 @@ main = "worker.js"
 compatibility_date = "2024-08-01"
 compatibility_flags = ["nodejs_compat"]
 
-# Routes configuration for your Cloudflare domains
+# Routes configuration for both domains
 [[routes]]
 pattern = "servicesync.io/*"
 zone_name = "servicesync.io"
 
-# Uncomment when ready to use frazierhorn.com
-# [[routes]]
-# pattern = "frazierhorn.com/*"
-# zone_name = "frazierhorn.com"
+[[routes]]
+pattern = "frazierhorn.com/*"
+zone_name = "frazierhorn.com"
 
-# Environment variables
+# Environment variables for multi-domain setup
 [vars]
-TARGET_DOMAIN = "www.hornhausventures.com"
-TARGET_PATH = "/servicesync"
+SERVICESYNC_DOMAIN = "www.hornhausventures.com"
+SERVICESYNC_PATH = "/servicesync"
+FRAZIERHORN_DOMAIN = "www.hornhausventures.com"
+FRAZIERHORN_PATH = "/frazier-horn"
 
 # Optional: KV namespace for caching (can add later for performance)
 # [[kv_namespaces]]
