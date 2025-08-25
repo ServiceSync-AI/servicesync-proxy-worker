@@ -1,0 +1,25 @@
+name = "servicesync-proxy"
+main = "worker.js"
+compatibility_date = "2024-08-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Routes configuration - update these domains as needed
+[[routes]]
+pattern = "servicesync.io/*"
+zone_name = "servicesync.io"
+
+# Uncomment when ready to use frazierhorn.com
+# [[routes]]
+# pattern = "frazierhorn.com/*"
+# zone_name = "frazierhorn.com"
+
+# Environment variables (if needed)
+[vars]
+TARGET_DOMAIN = "hornhausventures.com"
+TARGET_PATH = "/servicesync"
+
+# KV namespaces (if you need caching later)
+# [[kv_namespaces]]
+# binding = "CACHE"
+# id = "your-kv-namespace-id"
+# preview_id = "your-preview-kv-namespace-id"

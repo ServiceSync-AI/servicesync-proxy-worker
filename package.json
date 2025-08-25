@@ -1,0 +1,22 @@
+{
+  "name": "servicesync-proxy-worker",
+  "version": "1.0.0",
+  "description": "Cloudflare Worker proxy for ServiceSync.io domain",
+  "main": "worker.js",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "test": "wrangler dev --local"
+  },
+  "keywords": [
+    "cloudflare",
+    "worker",
+    "proxy",
+    "servicesync"
+  ],
+  "author": "Frazier Horn",
+  "license": "MIT",
+  "devDependencies": {
+    "wrangler": "^3.0.0"
+  }
+}
