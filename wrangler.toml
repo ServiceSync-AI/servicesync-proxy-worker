@@ -3,7 +3,7 @@ main = "worker.js"
 compatibility_date = "2024-08-01"
 compatibility_flags = ["nodejs_compat"]
 
-# Routes configuration - update these domains as needed
+# Routes configuration for your Cloudflare domains
 [[routes]]
 pattern = "servicesync.io/*"
 zone_name = "servicesync.io"
@@ -13,13 +13,18 @@ zone_name = "servicesync.io"
 # pattern = "frazierhorn.com/*"
 # zone_name = "frazierhorn.com"
 
-# Environment variables (if needed)
+# Environment variables
 [vars]
 TARGET_DOMAIN = "hornhausventures.com"
 TARGET_PATH = "/servicesync"
 
-# KV namespaces (if you need caching later)
+# Optional: KV namespace for caching (can add later for performance)
 # [[kv_namespaces]]
 # binding = "CACHE"
 # id = "your-kv-namespace-id"
 # preview_id = "your-preview-kv-namespace-id"
+
+# Durable Objects (if needed for advanced features later)
+# [[durable_objects.bindings]]
+# name = "PROXY_STATE"
+# class_name = "ProxyState"

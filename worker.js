@@ -1,6 +1,6 @@
 /**
  * Cloudflare Worker Proxy for ServiceSync.io
- * Proxies requests to hornhausventures.com/servicesync while rewriting URLs
+ * Proxies requests to hornhausventures.com/servicesync (Webflow) while keeping servicesync.io in browser
  */
 
 export default {
@@ -13,78 +13,89 @@ export default {
     const PROXY_DOMAIN = url.hostname; // servicesync.io or frazierhorn.com
     
     try {
-      // Build the target URL
+      // Build the target URL for Webflow
       const targetUrl = new URL(request.url);
       targetUrl.hostname = TARGET_DOMAIN;
       
-      // Map root requests to the servicesync subpage
+      // Map all requests to the servicesync subpage structure
       if (targetUrl.pathname === '/' || targetUrl.pathname === '') {
         targetUrl.pathname = TARGET_PATH_PREFIX;
       } else {
-        // Prepend the target path prefix to other requests
-        targetUrl.pathname = TARGET_PATH_PREFIX + targetUrl.pathname;
+        // For Webflow, we might need to handle subpages differently
+        // Check if it's an asset request or a page request
+        if (isAssetRequest(targetUrl.pathname)) {
+          // Keep asset paths as-is for Webflow assets
+          // Don't prepend TARGET_PATH_PREFIX for assets
+        } else {
+          // For page requests, prepend the target path
+          targetUrl.pathname = TARGET_PATH_PREFIX + targetUrl.pathname;
+        }
       }
       
-      // Create new request with modified headers
+      // Create new request with proper headers for Webflow
       const modifiedRequest = new Request(targetUrl.toString(), {
         method: request.method,
-        headers: request.headers,
+        headers: new Headers(request.headers),
         body: request.body,
         redirect: 'manual'
       });
       
-      // Add/modify headers for the upstream request
+      // Set headers that Webflow expects
       modifiedRequest.headers.set('Host', TARGET_DOMAIN);
       modifiedRequest.headers.set('X-Forwarded-Host', PROXY_DOMAIN);
       modifiedRequest.headers.set('X-Forwarded-Proto', 'https');
+      modifiedRequest.headers.set('X-Real-IP', request.headers.get('CF-Connecting-IP') || '');
+      modifiedRequest.headers.set('User-Agent', request.headers.get('User-Agent') || 'CloudflareWorker/1.0');
       
-      // Fetch from the target
+      // Fetch from Webflow
       const response = await fetch(modifiedRequest);
       
-      // Handle redirects
+      // Handle redirects from Webflow
       if (response.status >= 300 && response.status < 400) {
         const location = response.headers.get('Location');
         if (location) {
           const redirectUrl = new URL(location, targetUrl);
           if (redirectUrl.hostname === TARGET_DOMAIN) {
-            // Rewrite redirect to proxy domain
+            // Rewrite Webflow redirects to proxy domain
             redirectUrl.hostname = PROXY_DOMAIN;
-            redirectUrl.pathname = redirectUrl.pathname.replace(TARGET_PATH_PREFIX, '');
+            // Remove the servicesync prefix from redirects
+            if (redirectUrl.pathname.startsWith(TARGET_PATH_PREFIX)) {
+              redirectUrl.pathname = redirectUrl.pathname.replace(TARGET_PATH_PREFIX, '') || '/';
+            }
             return Response.redirect(redirectUrl.toString(), response.status);
           }
         }
       }
       
-      // Clone response to modify
-      const modifiedResponse = new Response(response.body, {
-        status: response.status,
-        statusText: response.statusText,
-        headers: response.headers
-      });
+      // Create response with modified headers
+      const responseHeaders = new Headers(response.headers);
+      responseHeaders.set('X-Proxy-By', 'ServiceSync-Worker');
+      responseHeaders.delete('X-Frame-Options');
+      responseHeaders.delete('Content-Security-Policy');
       
-      // Modify response headers
-      modifiedResponse.headers.set('X-Proxy-By', 'Cloudflare-Worker');
-      modifiedResponse.headers.delete('X-Frame-Options');
-      modifiedResponse.headers.delete('Content-Security-Policy');
-      
-      // Process HTML content
+      // Process HTML content for Webflow
       const contentType = response.headers.get('Content-Type') || '';
       if (contentType.includes('text/html')) {
         const html = await response.text();
-        const rewrittenHtml = rewriteHtmlContent(html, TARGET_DOMAIN, PROXY_DOMAIN, TARGET_PATH_PREFIX);
+        const rewrittenHtml = rewriteWebflowContent(html, TARGET_DOMAIN, PROXY_DOMAIN, TARGET_PATH_PREFIX);
         
         return new Response(rewrittenHtml, {
           status: response.status,
           statusText: response.statusText,
-          headers: modifiedResponse.headers
+          headers: responseHeaders
         });
       }
       
-      return modifiedResponse;
+      // Return other content types as-is (CSS, JS, images, etc.)
+      return new Response(response.body, {
+        status: response.status,
+        statusText: response.statusText,
+        headers: responseHeaders
+      });
       
     } catch (error) {
       console.error('Proxy error:', error);
-      return new Response('Proxy Error: ' + error.message, { 
+      return new Response(`Proxy Error: ${error.message}`, { 
         status: 500,
         headers: { 'Content-Type': 'text/plain' }
       });
@@ -93,62 +104,104 @@ export default {
 };
 
 /**
- * Rewrite HTML content to replace target domain references with proxy domain
+ * Check if the request is for an asset (CSS, JS, images, etc.)
  */
-function rewriteHtmlContent(html, targetDomain, proxyDomain, targetPathPrefix) {
+function isAssetRequest(pathname) {
+  const assetExtensions = ['.css', '.js', '.png', '.jpg', '.jpeg', '.gif', '.svg', '.ico', '.woff', '.woff2', '.ttf', '.eot', '.pdf'];
+  return assetExtensions.some(ext => pathname.toLowerCase().endsWith(ext)) || 
+         pathname.includes('/assets/') || 
+         pathname.includes('/uploads/') ||
+         pathname.includes('/_next/') ||
+         pathname.includes('/static/');
+}
+
+/**
+ * Rewrite HTML content specifically for Webflow sites
+ * Handles Webflow's specific URL patterns and asset loading
+ */
+function rewriteWebflowContent(html, targetDomain, proxyDomain, targetPathPrefix) {
   let rewritten = html;
   
-  // Rewrite canonical URLs
+  // 1. Rewrite canonical URLs to use proxy domain
   rewritten = rewritten.replace(
     new RegExp(`<link([^>]*?)rel=["']canonical["']([^>]*?)href=["']https?://${targetDomain}${targetPathPrefix}([^"']*?)["']([^>]*?)>`, 'gi'),
     `<link$1rel="canonical"$2href="https://${proxyDomain}$3"$4>`
   );
   
-  // Rewrite meta og:url
+  // Also handle canonical without the path prefix
+  rewritten = rewritten.replace(
+    new RegExp(`<link([^>]*?)rel=["']canonical["']([^>]*?)href=["']https?://${targetDomain}["']([^>]*?)>`, 'gi'),
+    `<link$1rel="canonical"$2href="https://${proxyDomain}/"$3>`
+  );
+  
+  // 2. Rewrite Open Graph URLs
   rewritten = rewritten.replace(
     new RegExp(`<meta([^>]*?)property=["']og:url["']([^>]*?)content=["']https?://${targetDomain}${targetPathPrefix}([^"']*?)["']([^>]*?)>`, 'gi'),
     `<meta$1property="og:url"$2content="https://${proxyDomain}$3"$4>`
   );
   
-  // Rewrite absolute links to the target domain
+  rewritten = rewritten.replace(
+    new RegExp(`<meta([^>]*?)property=["']og:url["']([^>]*?)content=["']https?://${targetDomain}["']([^>]*?)>`, 'gi'),
+    `<meta$1property="og:url"$2content="https://${proxyDomain}/"$3>`
+  );
+  
+  // 3. Rewrite Twitter Card URLs
+  rewritten = rewritten.replace(
+    new RegExp(`<meta([^>]*?)name=["']twitter:url["']([^>]*?)content=["']https?://${targetDomain}${targetPathPrefix}([^"']*?)["']([^>]*?)>`, 'gi'),
+    `<meta$1name="twitter:url"$2content="https://${proxyDomain}$3"$4>`
+  );
+  
+  // 4. Rewrite navigation links that point to the servicesync section
   rewritten = rewritten.replace(
     new RegExp(`href=["']https?://${targetDomain}${targetPathPrefix}([^"']*?)["']`, 'gi'),
     `href="$1"`
   );
   
-  // Rewrite absolute links to target domain root that should go to proxy
+  // 5. Rewrite any links that go to the main domain root to go to proxy root
   rewritten = rewritten.replace(
     new RegExp(`href=["']https?://${targetDomain}["']`, 'gi'),
     `href="/"`
   );
   
-  // Rewrite src attributes for assets
-  rewritten = rewritten.replace(
-    new RegExp(`src=["']https?://${targetDomain}${targetPathPrefix}([^"']*?)["']`, 'gi'),
-    `src="$1"`
-  );
-  
-  // Rewrite action attributes in forms
+  // 6. Handle Webflow form actions
   rewritten = rewritten.replace(
     new RegExp(`action=["']https?://${targetDomain}${targetPathPrefix}([^"']*?)["']`, 'gi'),
     `action="$1"`
   );
   
-  // Add base tag if not present to handle relative URLs correctly
-  if (!rewritten.includes('<base')) {
-    rewritten = rewritten.replace(
-      /<head>/i,
-      `<head>\n  <base href="https://${proxyDomain}/">`
-    );
-  }
+  // 7. Handle any remaining absolute URLs to the target domain in href attributes
+  rewritten = rewritten.replace(
+    new RegExp(`href=["']https?://${targetDomain}([^"']*?)["']`, 'gi'),
+    (match, path) => {
+      // If the path starts with our target prefix, remove it
+      if (path.startsWith(targetPathPrefix)) {
+        return `href="${path.replace(targetPathPrefix, '') || '/'}"`;
+      }
+      // Otherwise, keep the path as-is (might be other parts of the site)
+      return `href="${path}"`;
+    }
+  );
   
-  // Inject additional meta tags for SEO
-  const seoInjection = `
+  // 8. Update any JavaScript that might contain domain references
+  rewritten = rewritten.replace(
+    new RegExp(`(['"\`])https?://${targetDomain}${targetPathPrefix}([^'"\`]*?)(['"\`])`, 'gi'),
+    `$1$2$3`
+  );
+  
+  // 9. Add SEO meta tags to ensure proper indexing
+  const seoTags = `
   <meta name="robots" content="index, follow">
+  <meta name="googlebot" content="index, follow">
   <link rel="dns-prefetch" href="//${proxyDomain}">
+  <meta property="og:site_name" content="ServiceSync">
   `;
   
-  rewritten = rewritten.replace(/<\/head>/i, `${seoInjection}</head>`);
+  // Insert SEO tags before closing head tag
+  rewritten = rewritten.replace(/<\/head>/i, `${seoTags}</head>`);
+  
+  // 10. Handle any Webflow-specific asset URLs if needed
+  // Webflow typically uses absolute URLs for assets, so we might need to proxy those too
+  // But usually Webflow assets should load fine from their CDN
   
   return rewritten;
 }
