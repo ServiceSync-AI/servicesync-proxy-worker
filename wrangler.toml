@@ -15,7 +15,7 @@ zone_name = "servicesync.io"
 
 # Environment variables
 [vars]
-TARGET_DOMAIN = "hornhausventures.com"
+TARGET_DOMAIN = "www.hornhausventures.com"
 TARGET_PATH = "/servicesync"
 
 # Optional: KV namespace for caching (can add later for performance)

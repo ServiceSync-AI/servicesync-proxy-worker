@@ -8,7 +8,7 @@ export default {
     const url = new URL(request.url);
     
     // Configuration
-    const TARGET_DOMAIN = 'hornhausventures.com';
+    const TARGET_DOMAIN = 'www.hornhausventures.com'; // Updated to use www
     const TARGET_PATH_PREFIX = '/servicesync';
     const PROXY_DOMAIN = url.hostname; // servicesync.io or frazierhorn.com
     
