@@ -3,29 +3,16 @@ main = "worker.js"
 compatibility_date = "2024-08-01"
 compatibility_flags = ["nodejs_compat"]
 
-# Routes configuration for both domains
+# Routes — only intercepts root domain, subdomains are independent
 [[routes]]
 pattern = "servicesync.io/*"
 zone_name = "servicesync.io"
 
 [[routes]]
-pattern = "frazierhorn.com/*"
-zone_name = "frazierhorn.com"
+pattern = "www.servicesync.io/*"
+zone_name = "servicesync.io"
 
-# Environment variables for multi-domain setup
+# Environment variables
 [vars]
-SERVICESYNC_DOMAIN = "www.hornhausventures.com"
-SERVICESYNC_PATH = "/servicesync"
-FRAZIERHORN_DOMAIN = "www.hornhausventures.com"
-FRAZIERHORN_PATH = "/frazier-horn"
-
-# Optional: KV namespace for caching (can add later for performance)
-# [[kv_namespaces]]
-# binding = "CACHE"
-# id = "your-kv-namespace-id"
-# preview_id = "your-preview-kv-namespace-id"
-
-# Durable Objects (if needed for advanced features later)
-# [[durable_objects.bindings]]
-# name = "PROXY_STATE"
-# class_name = "ProxyState"
+TARGET_DOMAIN = "luumis.ai"
+TARGET_PATH = "/servicesync"
