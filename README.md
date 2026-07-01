@@ -1,310 +1,149 @@
-# Multi-Domain Proxy Worker
+# ServiceSync Proxy Worker
 
-A Cloudflare Worker that proxies requests from multiple domains to corresponding pages on your Webflow site at `hornhausventures.com`, while maintaining the custom domains in the browser for perfect SEO.
-
-## Supported Domains
-
-- **ServiceSync**: `servicesync.io` → `hornhausventures.com/servicesync`
-- **Frazier Horn**: `frazierhorn.com` → `hornhausventures.com/frazier-horn`
-
-## Overview
-
-This proxy allows you to serve content from your existing Webflow site under custom domains while maintaining SEO integrity. Visitors see the custom domain in their browser, but the content comes from your Webflow pages.
-
-## Features
-
-- **Seamless Domain Proxying**: Serves Webflow content on `servicesync.io`
-- **SEO Optimization**: All canonical URLs, Open Graph, and meta tags use `servicesync.io`
-- **Webflow Compatibility**: Preserves Webflow functionality, forms, and assets
-- **URL Rewriting**: Intelligent rewriting of links and navigation
-- **Asset Handling**: Proper handling of CSS, JS, images, and Webflow assets
-- **Performance Optimized**: Minimal latency with Cloudflare's edge network
+Cloudflare Worker that serves `servicesync.io` by proxying content from `luumis.ai/servicesync/`. Visitors see `servicesync.io` in their browser — no redirect, no URL change.
 
 ## How It Works
 
+```
+Browser -> https://servicesync.io/
+  -> Cloudflare Worker intercepts (route: servicesync.io/*)
+  -> Fetches https://luumis.ai/servicesync/
+  -> Rewrites HTML (canonical, OG, nav links -> servicesync.io)
+  -> Serves to visitor with servicesync.io URLs throughout
+```
+
 ### URL Mapping
-**ServiceSync:**
-- `servicesync.io/` → `hornhausventures.com/servicesync`
-- `servicesync.io/about` → `hornhausventures.com/servicesync/about`
-- `servicesync.io/contact` → `hornhausventures.com/servicesync/contact`
 
-**Frazier Horn:**
-- `frazierhorn.com/` → `hornhausventures.com/frazier-horn`
-- `frazierhorn.com/about` → `hornhausventures.com/frazier-horn/about`
-- `frazierhorn.com/portfolio` → `hornhausventures.com/frazier-horn/portfolio`
+| Visitor sees | Worker fetches |
+|--------------|----------------|
+| servicesync.io/ | luumis.ai/servicesync/ |
+| servicesync.io/audit/ | luumis.ai/servicesync/audit/ |
+| servicesync.io/dealers/ | luumis.ai/servicesync/dealers/ |
+| servicesync.io/investors/ | luumis.ai/servicesync/investors/ |
+| servicesync.io/press/ | luumis.ai/servicesync/press/ |
+| servicesync.io/assets/* | luumis.ai/servicesync/assets/* |
 
-### Browser Experience
-1. User visits `servicesync.io`
-2. Worker fetches content from `hornhausventures.com/servicesync`
-3. HTML is rewritten to show `servicesync.io` URLs
-4. User sees `servicesync.io` in browser and all navigation
-5. Google indexes `servicesync.io` as the primary domain
+### What Gets Rewritten
 
-### SEO Benefits
-- **Canonical URLs**: All point to `servicesync.io`
-- **Meta Tags**: Open Graph and Twitter Cards use proxy domain
-- **Internal Links**: Navigation stays within `servicesync.io`
-- **Search Engines**: See `servicesync.io` as the authoritative domain
-- **No Duplicate Content**: Prevents SEO issues from multiple domains
+- `<link rel="canonical">` URLs
+- Open Graph (`og:url`) tags
+- Twitter Card URLs
+- Internal navigation links
+- JavaScript domain references
+- Form action URLs
 
 ## Project Structure
 
 ```
 servicesync-proxy-worker/
-├── worker.js          # Main Cloudflare Worker proxy logic
-├── wrangler.toml      # Cloudflare Worker configuration
-├── package.json       # Node.js project configuration
-├── README.md          # This documentation
-└── .gitignore         # Git ignore rules
+├── worker.js          Cloudflare Worker (main logic)
+├── wrangler.toml      Deployment config (routes, env vars)
+├── package.json       Dependencies (wrangler CLI)
+├── CHANGELOG.md       Version history
+└── README.md          This file
 ```
-
-## Setup Instructions
-
-### Prerequisites
-- Cloudflare account with your domains added
-- GitHub account
-- Webflow site at `hornhausventures.com/servicesync`
-
-### 1. Repository Setup
-This repository is already created and configured:
-- **GitHub Repo**: https://github.com/ServiceSync-AI/servicesync-proxy-worker
-- **Organization**: ServiceSync AI
-- **Local Path**: `/Users/frazierhorn/servicesync-proxy-worker`
-
-### 2. Cloudflare Deployment
-
-#### Option A: Deploy via Cloudflare Dashboard (Recommended)
-1. Go to [Cloudflare Dashboard](https://dash.cloudflare.com)
-2. Navigate to **Workers & Pages**
-3. Click **"Create Application"** → **"Pages"** → **"Connect to Git"**
-4. Select your GitHub repository: `servicesync-proxy-worker`
-5. Configure deployment settings:
-   - **Project name**: `servicesync-proxy`
-   - **Production branch**: `master`
-   - **Build command**: (leave empty)
-   - **Build output directory**: (leave empty)
-6. Click **"Save and Deploy"**
-
-#### Option B: Deploy via Wrangler CLI
-```bash
-cd /Users/frazierhorn/servicesync-proxy-worker
-npm install -g wrangler
-wrangler login
-wrangler deploy
-```
-
-### 3. Domain Configuration
-
-#### Add Domain to Cloudflare
-1. In Cloudflare Dashboard, go to **"Add a Site"**
-2. Enter `servicesync.io`
-3. Follow the setup process to change nameservers
-
-#### Configure DNS
-1. Go to **DNS** tab for `servicesync.io`
-2. Add an **A record**:
-   - **Name**: `@` (root domain)
-   - **IPv4 address**: `192.0.2.1` (placeholder, will be handled by Worker)
-   - **Proxy status**: Proxied (orange cloud)
-3. Add **CNAME record** for www:
-   - **Name**: `www`
-   - **Target**: `servicesync.io`
-   - **Proxy status**: Proxied (orange cloud)
-
-#### Configure Worker Routes
-The routes are automatically configured in `wrangler.toml`:
-- `servicesync.io/*` → Worker handles all requests
-- Future: `frazierhorn.com/*` (uncomment when ready)
-
-### 4. SSL/TLS Configuration
-1. Go to **SSL/TLS** tab in Cloudflare
-2. Set encryption mode to **"Full (strict)"**
-3. Enable **"Always Use HTTPS"**
-
-## Local Development
-
-### Install Dependencies
-```bash
-cd /Users/frazierhorn/servicesync-proxy-worker
-npm install
-```
-
-### Run Locally
-```bash
-npm run dev
-```
-This starts a local development server for testing.
-
-### Test the Proxy
-```bash
-npm run test
-```
-Runs the worker locally without deploying.
 
 ## Configuration
 
-### Environment Variables
-Configured in `wrangler.toml`:
-- `TARGET_DOMAIN`: `hornhausventures.com`
-- `TARGET_PATH`: `/servicesync`
+### wrangler.toml
 
-### Webflow-Specific Settings
-The worker is optimized for Webflow with:
-- Asset request detection
-- Form action rewriting
-- Webflow URL pattern handling
-- SEO meta tag injection
+```toml
+name = "servicesync-proxy"
+main = "worker.js"
 
-## Code Features
+[[routes]]
+pattern = "servicesync.io/*"
+zone_name = "servicesync.io"
 
-### Intelligent URL Rewriting
-```javascript
-// Canonical URLs
-<link rel="canonical" href="https://servicesync.io/about">
+[[routes]]
+pattern = "www.servicesync.io/*"
+zone_name = "servicesync.io"
 
-// Open Graph
-<meta property="og:url" content="https://servicesync.io/about">
-
-// Navigation Links
-<a href="/contact">Contact</a>
+[vars]
+TARGET_DOMAIN = "luumis.ai"
+TARGET_PATH = "/servicesync"
 ```
 
-### Asset Handling
-- Webflow assets load from their CDN
-- CSS and JS files work normally
-- Images and fonts load correctly
-- No performance impact on assets
+### Cloudflare Zone
 
-### Form Processing
-- Webflow forms submit correctly
-- Form actions rewritten to proxy domain
-- Maintains Webflow's form functionality
+- Zone: servicesync.io
+- Zone ID: 19554d383464b0845fb58bcffc1bcf30
+- Account: fhorn@hornhausventures.com
+- SSL Mode: Flexible (S3 origins are HTTP-only)
 
-## Monitoring & Analytics
+## Deployment
 
-### Cloudflare Analytics
-Monitor performance in Cloudflare Dashboard:
-- **Workers & Pages** → **Your Worker** → **Metrics**
-- View request volume, response times, errors
-- Real User Monitoring (RUM) data
+```bash
+cd ~/Development/LocalProjects/Professional/servicesync-proxy-worker
+npx wrangler deploy
+```
 
-### Key Metrics to Watch
-- **Request Volume**: Traffic to `servicesync.io`
-- **Response Time**: Proxy latency
-- **Error Rate**: Failed requests
-- **Cache Hit Ratio**: Asset caching performance
+Deploys immediately to Cloudflare's edge. Changes are live in seconds.
+
+### Local Development
+
+```bash
+npx wrangler dev
+# Worker runs locally at http://localhost:8787
+```
+
+## Origin Site
+
+The actual HTML/CSS/assets live in the `luumis-sites` repo:
+- Repo: `ServiceSync-AI/luumis-sites`
+- Path: `luumis.ai/servicesync/`
+- Deployed to: S3 bucket `luumis.ai` via GitHub Actions
+
+When you push changes to `luumis-sites`, both `luumis.ai/servicesync/` AND `servicesync.io` get updated (since this Worker proxies from the same origin).
+
+## SEO
+
+- Google indexes `servicesync.io` as the primary domain (canonical URLs point there)
+- `luumis.ai/servicesync/` is the same content but canonical points to servicesync.io
+- No duplicate content penalty since canonical is consistent
+- `X-Proxy-By: ServiceSync-Worker` header added for debugging
+
+## Subdomains (Not Affected)
+
+This Worker only intercepts `servicesync.io/*` and `www.servicesync.io/*`. All subdomains are independent:
+
+- stratus.servicesync.io -> S3
+- go.servicesync.io -> S3 + Cloudflare Access
+- press.servicesync.io -> S3
+- console.servicesync.io -> CloudFront
+- track.servicesync.io -> CloudFront
+- api.servicesync.io -> API Gateway
+- n8n.servicesync.io -> EC2
 
 ## Troubleshooting
 
-### Common Issues
+### 302 redirect loop
+S3 returns trailing-slash redirects for directories. The Worker follows these internally. If you see a loop, check the internal redirect-follow logic in `worker.js`.
 
-#### 1. 404 Errors
-**Problem**: Page not found on `servicesync.io`
-**Solution**: 
-- Verify the Webflow page exists at `hornhausventures.com/servicesync`
-- Check that the page is published in Webflow
-- Ensure DNS is properly configured
+### 525 SSL Handshake Failed
+Zone SSL mode must be Flexible for S3 origins. Workers bypass this for their own fetches, but the DNS fallback (if Worker is disabled) needs Flexible.
 
-#### 2. CSS/JS Not Loading
-**Problem**: Styling or functionality broken
-**Solution**:
-- Check browser console for asset loading errors
-- Verify Webflow assets are accessible
-- Ensure proxy isn't blocking asset requests
+### Assets not loading
+Asset paths get prefixed with `/servicesync/` when fetched from origin. Check browser DevTools network tab.
 
-#### 3. Forms Not Working
-**Problem**: Webflow forms not submitting
-**Solution**:
-- Check form action URLs are rewritten correctly
-- Verify Webflow form settings
-- Test form submission on original Webflow site
-
-#### 4. Redirect Loops
-**Problem**: Infinite redirects between domains
-**Solution**:
-- Check for conflicting redirect rules in Cloudflare
-- Verify Webflow isn't redirecting back to main domain
-- Review Worker redirect handling logic
-
-### Debug Mode
-Enable detailed logging by adding console.log statements in `worker.js` and checking Cloudflare Dashboard logs.
-
-### Testing Checklist
-- [ ] `servicesync.io` loads Webflow content
-- [ ] URLs stay as `servicesync.io` in browser
-- [ ] Navigation links work correctly
-- [ ] Forms submit successfully
-- [ ] Assets (CSS/JS/images) load properly
-- [ ] SEO tags show `servicesync.io`
-- [ ] Mobile responsiveness maintained
-
-## SEO Verification
-
-### Check Canonical URLs
+### Verifying Worker is active
 ```bash
-curl -s https://servicesync.io | grep canonical
+curl -sI https://servicesync.io/ | grep x-proxy-by
+# x-proxy-by: ServiceSync-Worker
 ```
 
-### Verify Meta Tags
-```bash
-curl -s https://servicesync.io | grep -E "(og:url|twitter:url)"
-```
+## Related Repos
 
-### Google Search Console
-1. Add `servicesync.io` to Google Search Console
-2. Submit sitemap (if available from Webflow)
-3. Monitor indexing status
-4. Check for crawl errors
+| Repo | What |
+|------|------|
+| ServiceSync-AI/luumis-sites | Origin HTML/CSS (S3 deployed) |
+| ServiceSync-AI/servicesync-sites | Other servicesync.io subdomains (stratus, press, go) |
 
-## Future Enhancements
+## History
 
-### Performance Optimizations
-- [ ] Add KV storage for caching
-- [ ] Implement edge-side includes (ESI)
-- [ ] Add response compression
-- [ ] Optimize asset delivery
-
-### Advanced Features
-- [ ] A/B testing capabilities
-- [ ] Analytics integration
-- [ ] Custom error pages
-- [ ] Multi-language support
-- [ ] Advanced caching strategies
-
-### Additional Domains
-- [ ] Enable `frazierhorn.com` proxy
-- [ ] Add subdomain support
-- [ ] Implement domain-specific customizations
-
-## Deployment History
-
-### Version 1.0 (Initial)
-- Basic proxy functionality
-- URL rewriting for SEO
-- Webflow compatibility
-
-### Version 1.1 (Current)
-- Enhanced Webflow integration
-- Improved asset handling
-- Better SEO optimization
-- Form processing improvements
-
-## Support
-
-### Resources
-- [Cloudflare Workers Documentation](https://developers.cloudflare.com/workers/)
-- [Webflow Help Center](https://webflow.com/help)
-- [GitHub Repository](https://github.com/ServiceSync-AI/servicesync-proxy-worker)
-
-### Making Changes
-1. Edit code locally in `/Users/frazierhorn/servicesync-proxy-worker`
-2. Test changes with `npm run dev`
-3. Commit and push to GitHub
-4. Cloudflare automatically deploys from `master` branch
-
-### Contact
-For issues or questions about this proxy setup, check the GitHub repository issues or Cloudflare support.
+- **v1.0** (2026-05): Initial Worker, proxied from hornhausventures.com/servicesync (Webflow)
+- **v2.0** (2026-07-01): Switched origin to luumis.ai/servicesync/ (S3), fixed trailing-slash redirect loop, added www route
 
 ## License
 
-MIT License - This project is open source and available for modification and distribution.
+MIT
